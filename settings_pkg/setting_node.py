@@ -9,61 +9,73 @@ class SettingsNode(Node):
     def __init__(self):
         super().__init__('settings_node')
 
-        # Publisher
         self.publisher_ = self.create_publisher(
             String,
             '/settings',
             10
         )
 
-        # Timer
         self.timer = self.create_timer(
             2.0,
             self.publish_settings
         )
 
-        # Default settings
-        self.camera_enabled = True
-        self.typing_enabled = False
+        # Privacy mode controller
+        self.mode = 0
 
-        self.get_logger().info(
-            "Settings Node has started 🚀"
-        )
+    def update_privacy_mode(self):
+
+        # Mode 0 = Full Monitoring
+        if self.mode == 0:
+            self.camera_enabled = True
+            self.typing_enabled = True
+
+        # Mode 1 = Privacy Mode
+        elif self.mode == 1:
+            self.camera_enabled = False
+            self.typing_enabled = True
+
+        # Mode 2 = Minimal Monitoring
+        elif self.mode == 2:
+            self.camera_enabled = False
+            self.typing_enabled = False
+
+        # Switch modes automatically
+        self.mode = (self.mode + 1) % 3
 
     def publish_settings(self):
 
+        # Update privacy mode
+        self.update_privacy_mode()
+
         msg = String()
-
-        # Privacy mode labels
-        if self.camera_enabled and self.typing_enabled:
-            current_mode = "FULL_MONITORING"
-
-        elif not self.camera_enabled and self.typing_enabled:
-            current_mode = "PRIVACY_MODE"
-
-        else:
-            current_mode = "MINIMAL_MODE"
 
         data = {
             "camera": self.camera_enabled,
-            "typing": self.typing_enabled,
-            "mode": current_mode
+            "typing": self.typing_enabled
         }
 
         msg.data = json.dumps(data)
 
         self.publisher_.publish(msg)
 
-        self.get_logger().info(
-            f"Publishing: {msg.data}"
-        )
+        # Privacy-aware behavior logs
+        if not self.camera_enabled:
+            self.get_logger().warning(
+                "Camera disabled - visual fatigue tracking blocked"
+            )
 
-    def update_settings(self):
+        if not self.typing_enabled:
+            self.get_logger().warning(
+                "Typing tracking disabled"
+            )
 
-        # Simulate changing privacy states
-        self.camera_enabled = not self.camera_enabled
+        if not self.camera_enabled and not self.typing_enabled:
+            self.get_logger().error(
+                "Limited fatigue detection - insufficient sensor data"
+            )
 
-    # Optional future logic area
+        self.get_logger().info(f"Publishing: {msg.data}")
 
 
 def main(args=None):
@@ -72,18 +84,13 @@ def main(args=None):
 
     node = SettingsNode()
 
-    try:
-        rclpy.spin(node)
+    rclpy.spin(node)
 
-    except KeyboardInterrupt:
-        node.get_logger().info(
-            "Shutting down node..."
-        )
+    node.destroy_node()
 
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
+    rclpy.shutdown()
 
 
 if __name__ == '__main__':
+    main()ain__':
     main()
